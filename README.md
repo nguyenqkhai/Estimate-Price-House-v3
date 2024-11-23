@@ -21,4 +21,4 @@ Link colab: https://colab.research.google.com/drive/12BuYHNFAIeoHqiWSOwr1ei8n3Q2
 
   - Viết giao diện bằng thư viện streamlit để tương tác với model
   - Dùng eamlit community cloud để deploy
-  - 
+Link dùng thử: https://estimate-price-house-v3-flameo.streamlit.app/

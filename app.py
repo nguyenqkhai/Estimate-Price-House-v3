@@ -162,6 +162,7 @@ def preprocess_input(data, encoder, numeric_columns, categorical_columns):
     features = pd.concat([data[numeric_columns], encoded_features], axis=1)
     return features
 
+
 st.set_page_config(page_title="Dự đoán giá nhà", page_icon="🏠", layout="centered")
 
 st.title("Dự đoán giá nhà 🏡")
@@ -171,9 +172,9 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 if "selected_district" not in st.session_state:
-    st.session_state.selected_district = None  
+    st.session_state.selected_district = None
 if "selected_ward" not in st.session_state:
-    st.session_state.selected_ward = None  
+    st.session_state.selected_ward = None
 
 districts = encoder.categories_[categorical_columns.index("Quận")]
 st.session_state.selected_district = st.selectbox(
@@ -186,7 +187,7 @@ st.session_state.selected_ward = st.selectbox(
 )
 
 with st.form("predict_form"):
-    col1, col2 = st.columns(2) 
+    col1, col2 = st.columns(2)
     with col1:
         area = st.number_input("Diện tích (m²)", min_value=0.0, step=1.0, help="Nhập diện tích của căn nhà.")
         floors = st.number_input("Số tầng", min_value=1, step=1, help="Nhập số tầng của căn nhà.")
@@ -199,26 +200,39 @@ with st.form("predict_form"):
     submit_button = st.form_submit_button("Dự đoán giá nhà")
 
 if submit_button:
-    new_data = pd.DataFrame({
-        "Diện tích": [area],
-        "Số tầng": [floors],
-        "Số phòng ngủ": [bedrooms],
-        "Số nhà vệ sinh": [bathrooms],
-        "Hướng cửa chính": [main_direction],
-        "Loại hình nhà ở": [house_type],
-        "Tên phường": [st.session_state.selected_ward],
-        "Quận": [st.session_state.selected_district]
-    })
+    if area <= 0 or area > 1000:
+        st.error("Vui lòng nhập diện tích hợp lý.")
+    elif floors <= 0 or floors > 20:
+        st.error("Vui lòng nhập số tầng hợp lý.")
+    elif bedrooms < 1 or bedrooms > 20:
+        st.error("Vui lòng nhập số phòng ngủ hợp lý.")
+    elif bathrooms < 1 or bathrooms > 20:
+        st.error("Vui lòng nhập số nhà vệ sinh hợp lý.")
+    elif not st.session_state.selected_district:
+        st.error("Vui lòng chọn quận.")
+    elif not st.session_state.selected_ward:
+        st.error("Vui lòng chọn phường.")
+    else:
+        new_data = pd.DataFrame({
+            "Diện tích": [area],
+            "Số tầng": [floors],
+            "Số phòng ngủ": [bedrooms],
+            "Số nhà vệ sinh": [bathrooms],
+            "Hướng cửa chính": [main_direction],
+            "Loại hình nhà ở": [house_type],
+            "Tên phường": [st.session_state.selected_ward],
+            "Quận": [st.session_state.selected_district]
+        })
 
-    try:
-        X_new = preprocess_input(new_data, encoder, numeric_columns, categorical_columns)
-        predicted_price = model.predict(X_new)
-        st.success(f"Giá nhà dự đoán: {predicted_price[0]:,.0f} VNĐ", icon="✅")
-    except ValueError as e:
-        if "Dữ liệu nhập không hợp lệ" in str(e):
-            st.error("Xin lỗi, chúng tôi không đủ dữ liệu để dự đoán giá nhà ở khu vực này.", icon="❌")
-        else:
-            st.error(f"Lỗi: {e}", icon="❌")
+        try:
+            X_new = preprocess_input(new_data, encoder, numeric_columns, categorical_columns)
+            predicted_price = model.predict(X_new)
+            st.success(f"Giá nhà dự đoán: {predicted_price[0]:,.0f} VNĐ", icon="✅")
+        except ValueError as e:
+            if "Dữ liệu nhập không hợp lệ" in str(e):
+                st.error("Xin lỗi, chúng tôi không đủ dữ liệu để dự đoán giá nhà ở khu vực này.", icon="❌")
+            else:
+                st.error(f"Lỗi: {e}", icon="❌")
 
 st.markdown("""
     ---  

@@ -1,5 +1,5 @@
 # Estimate-Price-House-v3
-Bài tập cuối kỳ môn python - Dự đoán giá nhà tại khu vực Tp.HCM
+Bài tập cuối kỳ môn AI - Dự đoán giá nhà tại khu vực Tp.HCM
 
 Thực hiện: 
   - cralw data từ nhatot.com

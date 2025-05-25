@@ -141,6 +141,7 @@ jobs:
               --name house-price-estimator \
               --restart unless-stopped \
               -p 80:8501 \
+              -p 8501:8501 \
               ${{ secrets.DOCKERHUB_USERNAME }}/house-price-estimator:latest
 
             # Clean up old images

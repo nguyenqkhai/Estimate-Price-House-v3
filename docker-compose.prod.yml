@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  house-price-app:
+    image: ${DOCKERHUB_USERNAME}/house-price-estimator:latest
+    container_name: house-price-app
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Add nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - house-price-app
+    restart: unless-stopped
+    profiles:
+      - with-nginx

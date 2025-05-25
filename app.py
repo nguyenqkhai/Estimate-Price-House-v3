@@ -28,6 +28,14 @@ WARD_15 = "Phường 15"
 WARD_16 = "Phường 16"
 WARD_17 = "Phường 17"
 WARD_18 = "Phường 18"
+WARD_19 = "Phường 19"
+WARD_21 = "Phường 21"
+WARD_22 = "Phường 22"
+WARD_24 = "Phường 24"
+WARD_25 = "Phường 25"
+WARD_26 = "Phường 26"
+WARD_27 = "Phường 27"
+WARD_28 = "Phường 28"
 
 district_to_wards = {
     "Quận 1": [
@@ -59,9 +67,9 @@ district_to_wards = {
         WARD_14, WARD_05, WARD_06, WARD_10, WARD_13
     ],
     "Quận 6": [
-        "Phường 14", "Phường 13", "Phường 09", "Phường 06", "Phường 12",
-        "Phường 05", "Phường 11", "Phường 02", "Phường 01", "Phường 04",
-        "Phường 08", "Phường 03", "Phường 07", "Phường 10"
+        WARD_14, WARD_13, WARD_09, WARD_06, WARD_12,
+        WARD_05, WARD_11, WARD_02, WARD_01, WARD_04,
+        WARD_08, WARD_03, WARD_07, WARD_10
     ],
     "Quận 7": [
         "Phường Tân Thuận Đông", "Phường Tân Thuận Tây", "Phường Tân Kiểng",
@@ -69,10 +77,10 @@ district_to_wards = {
         "Phường Phú Thuận", "Phường Tân Phú", "Phường Tân Phong", "Phường Phú Mỹ"
     ],
     "Quận 8": [
-        "Phường 08", "Phường 02", "Phường 01", "Phường 03", "Phường 11",
-        "Phường 09", "Phường 10", "Phường 04", "Phường 13", "Phường 12",
-        "Phường 05", "Phường 14", "Phường 06", "Phường 15", "Phường 16",
-        "Phường 07"
+        WARD_08, WARD_02, WARD_01, WARD_03, WARD_11,
+        WARD_09, WARD_10, WARD_04, WARD_13, WARD_12,
+        WARD_05, WARD_14, WARD_06, WARD_15, WARD_16,
+        WARD_07
     ],
     "Quận 9": [
         "Phường Long Bình", "Phường Long Thạnh Mỹ", "Phường Tân Phú",
@@ -82,15 +90,15 @@ district_to_wards = {
         "Phường Phú Hữu"
     ],
     "Quận 10": [
-        "Phường 15", "Phường 13", "Phường 14", "Phường 12", "Phường 11",
-        "Phường 10", "Phường 09", "Phường 01", "Phường 08", "Phường 02",
-        "Phường 04", "Phường 07", "Phường 05", "Phường 06", "Phường 03"
+        WARD_15, WARD_13, WARD_14, WARD_12, WARD_11,
+        WARD_10, WARD_09, WARD_01, WARD_08, WARD_02,
+        WARD_04, WARD_07, WARD_05, WARD_06, WARD_03
     ],
     "Quận 11": [
-        "Phường 15", "Phường 05", "Phường 14", "Phường 11", "Phường 03",
-        "Phường 10", "Phường 13", "Phường 08", "Phường 09", "Phường 12",
-        "Phường 07", "Phường 06", "Phường 04", "Phường 01", "Phường 02",
-        "Phường 16"
+        WARD_15, WARD_05, WARD_14, WARD_11, WARD_03,
+        WARD_10, WARD_13, WARD_08, WARD_09, WARD_12,
+        WARD_07, WARD_06, WARD_04, WARD_01, WARD_02,
+        WARD_16
     ],
     "Quận 12": [
         "Phường Thạnh Xuân", "Phường Thạnh Lộc", "Phường Hiệp Thành",
@@ -99,10 +107,10 @@ district_to_wards = {
         "Phường Đông Hưng Thuận", "Phường Tân Thới Nhất"
     ],
     "Quận Bình Thạnh": [
-        "Phường 13", "Phường 11", "Phường 27", "Phường 26", "Phường 12",
-        "Phường 25", "Phường 05", "Phường 07", "Phường 24", "Phường 06",
-        "Phường 14", "Phường 15", "Phường 02", "Phường 01", "Phường 03",
-        "Phường 17", "Phường 21", "Phường 22", "Phường 19", "Phường 28"
+        WARD_13, WARD_11, WARD_27, WARD_26, WARD_12,
+        WARD_25, WARD_05, WARD_07, WARD_24, WARD_06,
+        WARD_14, WARD_15, WARD_02, WARD_01, WARD_03,
+        WARD_17, WARD_21, WARD_22, WARD_19, WARD_28
     ],
     "Quận Bình Tân": [
         "Phường Bình Hưng Hòa", "Phường Bình Hưng Hòa A", "Phường Bình Hưng Hòa B",
@@ -110,20 +118,20 @@ district_to_wards = {
         "Phường Tân Tạo", "Phường Tân Tạo A", "Phường An Lạc", "Phường An Lạc A"
     ],
     "Quận Gò Vấp": [
-        "Phường 15", "Phường 13", "Phường 17", "Phường 06", "Phường 16",
-        "Phường 12", "Phường 14", "Phường 10", "Phường 05", "Phường 07",
-        "Phường 04", "Phường 01", "Phường 09", "Phường 08", "Phường 11",
-        "Phường 03"
+        WARD_15, WARD_13, WARD_17, WARD_06, WARD_16,
+        WARD_12, WARD_14, WARD_10, WARD_05, WARD_07,
+        WARD_04, WARD_01, WARD_09, WARD_08, WARD_11,
+        WARD_03
     ],
     "Quận Phú Nhuận": [
-        "Phường 04", "Phường 05", "Phường 09", "Phường 07", "Phường 03",
-        "Phường 01", "Phường 02", "Phường 08", "Phường 15", "Phường 10",
-        "Phường 11", "Phường 17", "Phường 14", "Phường 12", "Phường 13"
+        WARD_04, WARD_05, WARD_09, WARD_07, WARD_03,
+        WARD_01, WARD_02, WARD_08, WARD_15, WARD_10,
+        WARD_11, WARD_17, WARD_14, WARD_12, WARD_13
     ],
     "Quận Tân Bình": [
-        "Phường 02", "Phường 04", "Phường 12", "Phường 13", "Phường 01",
-        "Phường 03", "Phường 11", "Phường 07", "Phường 05", "Phường 10",
-        "Phường 06", "Phường 08", "Phường 09", "Phường 14", "Phường 15"
+        WARD_02, WARD_04, WARD_12, WARD_13, WARD_01,
+        WARD_03, WARD_11, WARD_07, WARD_05, WARD_10,
+        WARD_06, WARD_08, WARD_09, WARD_14, WARD_15
     ],
     "Quận Tân Phú": [
         "Phường Tân Sơn Nhì", "Phường Tây Thạnh", "Phường Sơn Kỳ",

@@ -115,37 +115,33 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # deploy:
-  #   name: Deploy to EC2
-  #   runs-on: ubuntu-latest
-  #   needs: build-and-push
-  #   if: github.ref == 'refs/heads/main'
-  #
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v4
-  #
-  #   - name: Deploy to EC2
-  #     uses: appleboy/ssh-action@v1.0.0
-  #     with:
-  #       host: ${{ secrets.EC2_HOST }}
-  #       username: ${{ secrets.EC2_USERNAME }}
-  #       key: ${{ secrets.EC2_SSH_KEY }}
-  #       port: ${{ secrets.EC2_PORT }}
-  #       script: |
-  #         # Stop and remove existing container
-  #         docker stop house-price-app || true
-  #         docker rm house-price-app || true
-  #
-  #         # Pull latest image
-  #         docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
-  #
-  #         # Run new container
-  #         docker run -d \
-  #           --name house-price-app \
-  #           --restart unless-stopped \
-  #           -p 8501:8501 \
-  #           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
-  #
-  #         # Clean up old images
-  #         docker image prune -f
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script: |
+            # Stop and remove existing container
+            sudo docker stop house-price-estimator || true
+            sudo docker rm house-price-estimator || true
+
+            # Pull latest image
+            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/house-price-estimator:latest
+
+            # Run new container
+            sudo docker run -d \
+              --name house-price-estimator \
+              --restart unless-stopped \
+              -p 80:8501 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/house-price-estimator:latest
+
+            # Clean up old images
+            sudo docker image prune -f

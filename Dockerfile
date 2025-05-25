@@ -8,8 +8,8 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies (disable recommended packages for security)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     software-properties-common \

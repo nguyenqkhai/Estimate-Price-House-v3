@@ -64,3 +64,17 @@ tests/
 htmlcov/
 .coverage
 coverage.xml
+
+# Sensitive files and secrets
+.env
+.env.local
+.env.production
+*.key
+*.pem
+*.crt
+*.p12
+secrets/
+config/secrets/
+
+# SonarCloud
+sonar-project.properties

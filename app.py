@@ -9,6 +9,26 @@ encoder = joblib.load("encoder_v5.pkl")
 numeric_columns = ['Diện tích', 'Số tầng', 'Số phòng ngủ', 'Số nhà vệ sinh']
 categorical_columns = ['Hướng cửa chính', 'Loại hình nhà ở', 'Tên phường', 'Quận']
 
+# Constants for ward names to avoid duplication
+WARD_01 = "Phường 01"
+WARD_02 = "Phường 02"
+WARD_03 = "Phường 03"
+WARD_04 = "Phường 04"
+WARD_05 = "Phường 05"
+WARD_06 = "Phường 06"
+WARD_07 = "Phường 07"
+WARD_08 = "Phường 08"
+WARD_09 = "Phường 09"
+WARD_10 = "Phường 10"
+WARD_11 = "Phường 11"
+WARD_12 = "Phường 12"
+WARD_13 = "Phường 13"
+WARD_14 = "Phường 14"
+WARD_15 = "Phường 15"
+WARD_16 = "Phường 16"
+WARD_17 = "Phường 17"
+WARD_18 = "Phường 18"
+
 district_to_wards = {
     "Quận 1": [
         "Phường Tân Định", "Phường Đa Kao", "Phường Bến Nghé",
@@ -23,20 +43,20 @@ district_to_wards = {
         "Phường An Lợi Đông", "Phường Thủ Thiêm"
     ],
     "Quận 3": [
-        "Phường 08", "Phường 07", "Phường 14", "Phường 12",
-        "Phường 11", "Phường 13", "Phường 06", "Phường 09",
-        "Phường 10", "Phường 04", "Phường 05", "Phường 03",
-        "Phường 02", "Phường 01"
+        WARD_08, WARD_07, WARD_14, WARD_12,
+        WARD_11, WARD_13, WARD_06, WARD_09,
+        WARD_10, WARD_04, WARD_05, WARD_03,
+        WARD_02, WARD_01
     ],
     "Quận 4": [
-        "Phường 12", "Phường 13", "Phường 09", "Phường 06", "Phường 08",
-        "Phường 10", "Phường 05", "Phường 18", "Phường 14", "Phường 04",
-        "Phường 03", "Phường 16", "Phường 02", "Phường 15", "Phường 01"
+        WARD_12, WARD_13, WARD_09, WARD_06, WARD_08,
+        WARD_10, WARD_05, WARD_18, WARD_14, WARD_04,
+        WARD_03, WARD_16, WARD_02, WARD_15, WARD_01
     ],
     "Quận 5": [
-        "Phường 04", "Phường 09", "Phường 03", "Phường 12", "Phường 02",
-        "Phường 08", "Phường 15", "Phường 07", "Phường 01", "Phường 11",
-        "Phường 14", "Phường 05", "Phường 06", "Phường 10", "Phường 13"
+        WARD_04, WARD_09, WARD_03, WARD_12, WARD_02,
+        WARD_08, WARD_15, WARD_07, WARD_01, WARD_11,
+        WARD_14, WARD_05, WARD_06, WARD_10, WARD_13
     ],
     "Quận 6": [
         "Phường 14", "Phường 13", "Phường 09", "Phường 06", "Phường 12",
@@ -151,7 +171,10 @@ district_to_wards = {
 def preprocess_input(data, encoder, numeric_columns, categorical_columns):
     for col in categorical_columns:
         valid_categories = encoder.categories_[categorical_columns.index(col)]
-        data[col] = data[col].apply(lambda x: x if x in valid_categories else None)
+        # Fix lambda function to avoid variable capture issue
+        def validate_category(x, valid_cats=valid_categories):
+            return x if x in valid_cats else None
+        data[col] = data[col].apply(validate_category)
 
     if data[categorical_columns].isnull().any().any():
         raise ValueError("Dữ liệu nhập không hợp lệ. Hãy kiểm tra lại các giá trị trong các cột phân loại.")
@@ -167,7 +190,7 @@ st.set_page_config(page_title="Dự đoán giá nhà", page_icon="🏠", layout=
 
 st.title("Dự đoán giá nhà 🏡")
 st.markdown("""
-    Hãy nhập thông tin chi tiết về căn nhà của bạn để dự đoán giá trị của nó. 
+    Hãy nhập thông tin chi tiết về căn nhà của bạn để dự đoán giá trị của nó.
     Mô hình sử dụng dữ liệu lịch sử để đưa ra dự đoán chính xác.
     """, unsafe_allow_html=True)
 
@@ -235,6 +258,6 @@ if submit_button:
                 st.error(f"Lỗi: {e}", icon="❌")
 
 st.markdown("""
-    ---  
+    ---
     <small>Ứng dụng dự đoán giá nhà được phát triển bởi nhóm 5.</small>
     """, unsafe_allow_html=True)

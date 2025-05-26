@@ -267,5 +267,5 @@ if submit_button:
 
 st.markdown("""
     ---
-    <small>Ứng dụng dự đoán giá nhà được phát triển bởi nhóm 5.</small>
+    <small>Ứng dụng dự đoán giá nhà được phát triển bởi nhóm DYNASQUAD.</small>
     """, unsafe_allow_html=True)

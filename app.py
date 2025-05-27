@@ -9,7 +9,7 @@ encoder = joblib.load("encoder_v5.pkl")
 numeric_columns = ['Diện tích', 'Số tầng', 'Số phòng ngủ', 'Số nhà vệ sinh']
 categorical_columns = ['Hướng cửa chính', 'Loại hình nhà ở', 'Tên phường', 'Quận']
 
-# Constants for ward names to avoid duplication
+# Hằng số cho tên phường để tránh trùng lặp
 WARD_01 = "Phường 01"
 WARD_02 = "Phường 02"
 WARD_03 = "Phường 03"
@@ -179,7 +179,7 @@ district_to_wards = {
 def preprocess_input(data, encoder, numeric_columns, categorical_columns):
     for col in categorical_columns:
         valid_categories = encoder.categories_[categorical_columns.index(col)]
-        # Fix lambda function to avoid variable capture issue
+        # Sửa lambda function để tránh lỗi capture variable
         def validate_category(x, valid_cats=valid_categories):
             return x if x in valid_cats else None
         data[col] = data[col].apply(validate_category)

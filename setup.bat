@@ -1,57 +1,57 @@
 @echo off
-echo 🚀 Setting up House Price Estimator development environment...
+echo 🚀 Thiết lập môi trường phát triển House Price Estimator...
 
-REM Check if Python is installed
+REM Kiểm tra Python đã cài đặt chưa
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ Python is not installed. Please install Python 3.9 or higher.
+    echo ❌ Python chưa được cài đặt. Vui lòng cài đặt Python 3.9 trở lên.
     pause
     exit /b 1
 )
 
-echo ✅ Python detected
+echo ✅ Đã phát hiện Python
 
-REM Create virtual environment
+REM Tạo virtual environment
 if not exist "venv" (
-    echo 📦 Creating virtual environment...
+    echo 📦 Đang tạo virtual environment...
     python -m venv venv
 )
 
-REM Activate virtual environment
-echo 🔧 Activating virtual environment...
+REM Kích hoạt virtual environment
+echo 🔧 Đang kích hoạt virtual environment...
 call venv\Scripts\activate.bat
 
-REM Upgrade pip
-echo ⬆️ Upgrading pip...
+REM Nâng cấp pip
+echo ⬆️ Đang nâng cấp pip...
 python -m pip install --upgrade pip
 
-REM Install dependencies
-echo 📚 Installing dependencies...
+REM Cài đặt dependencies
+echo 📚 Đang cài đặt dependencies...
 pip install -r requirements.txt
 
-REM Check if model files exist
+REM Kiểm tra model files có tồn tại không
 if not exist "model_estimate_price_house_v5.pkl" (
-    echo ⚠️ Warning: model_estimate_price_house_v5.pkl not found
+    echo ⚠️ Cảnh báo: Không tìm thấy model_estimate_price_house_v5.pkl
 )
 if not exist "encoder_v5.pkl" (
-    echo ⚠️ Warning: encoder_v5.pkl not found
+    echo ⚠️ Cảnh báo: Không tìm thấy encoder_v5.pkl
 )
 
-REM Run tests
-echo 🧪 Running tests...
+REM Chạy tests
+echo 🧪 Đang chạy tests...
 pytest test_app.py -v
 
 echo.
-echo ✅ Setup complete!
+echo ✅ Thiết lập hoàn tất!
 echo.
-echo To start the application:
-echo 1. Activate virtual environment: venv\Scripts\activate.bat
-echo 2. Run the app: streamlit run app.py
-echo 3. Open browser: http://localhost:8501
+echo Để khởi động ứng dụng:
+echo 1. Kích hoạt virtual environment: venv\Scripts\activate.bat
+echo 2. Chạy app: streamlit run app.py
+echo 3. Mở browser: http://localhost:8501
 echo.
-echo For Docker deployment:
-echo 1. Build and run: docker-compose up --build
-echo 2. Open browser: http://localhost:8501
+echo Để deploy bằng Docker:
+echo 1. Build và chạy: docker-compose up --build
+echo 2. Mở browser: http://localhost:8501
 echo.
-echo Happy coding! 🎉
+echo Chúc bạn code vui vẻ! 🎉
 pause

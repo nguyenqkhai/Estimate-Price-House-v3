@@ -1,33 +1,33 @@
-# Use Python 3.9 slim image
+# Sử dụng Python 3.9 slim image
 FROM python:3.9-slim
 
-# Set working directory
+# Thiết lập thư mục làm việc
 WORKDIR /app
 
-# Set environment variables
+# Thiết lập biến môi trường
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies (disable recommended packages for security)
+# Cài đặt system dependencies (tắt recommended packages để bảo mật)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements trước để tận dụng Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
+# Cài đặt Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code (specific files to avoid sensitive data)
+# Copy application code (chỉ copy files cần thiết để tránh sensitive data)
 COPY app.py .
 COPY model_estimate_price_house_v5.pkl .
 COPY encoder_v5.pkl .
 
-# Create non-root user for security (addresses security hotspot)
-# This prevents the container from running as root, reducing security risks
+# Tạo non-root user để bảo mật (giải quyết security hotspot)
+# Điều này ngăn container chạy với quyền root, giảm rủi ro bảo mật
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
 USER appuser
 
@@ -37,5 +37,5 @@ EXPOSE 8501
 # Health check
 HEALTHCHECK CMD ["curl", "--fail", "http://localhost:8501/_stcore/health"]
 
-# Run the application
+# Chạy ứng dụng
 CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

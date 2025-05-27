@@ -129,14 +129,14 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script: |
-            # Stop and remove existing container
+            # Dừng và xóa container hiện tại
             sudo docker stop house-price-estimator || true
             sudo docker rm house-price-estimator || true
 
-            # Pull latest image
+            # Pull image mới nhất
             sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/house-price-estimator:latest
 
-            # Run new container
+            # Chạy container mới
             sudo docker run -d \
               --name house-price-estimator \
               --restart unless-stopped \
@@ -144,5 +144,5 @@ jobs:
               -p 8501:8501 \
               ${{ secrets.DOCKERHUB_USERNAME }}/house-price-estimator:latest
 
-            # Clean up old images
+            # Dọn dẹp old images
             sudo docker image prune -f

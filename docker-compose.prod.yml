@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   house-price-app:
@@ -21,7 +21,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Optional: Add nginx reverse proxy
+  # Tùy chọn: Thêm nginx reverse proxy
   nginx:
     image: nginx:alpine
     container_name: nginx-proxy

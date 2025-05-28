@@ -205,6 +205,8 @@ jobs:
           if ! aws logs describe-log-groups --log-group-name-prefix $LOG_GROUP --region $REGION --query 'logGroups[0].logGroupName' --output text 2>/dev/null | grep -q "$LOG_GROUP"; then
             echo "Creating CloudWatch Log Group: $LOG_GROUP"
             aws logs create-log-group --log-group-name $LOG_GROUP --region $REGION
+            # Set retention policy
+            aws logs put-retention-policy --log-group-name $LOG_GROUP --retention-in-days 7 --region $REGION
           else
             echo "Log Group $LOG_GROUP already exists"
           fi
@@ -220,9 +222,20 @@ jobs:
           echo "CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
           echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
 
-      - name: Create IAM roles for ECS (Skip if roles exist)
-        continue-on-error: true
+      - name: Check if IAM roles exist
         run: |
+          # Kiểm tra roles có tồn tại không
+          if aws iam get-role --role-name ecsTaskExecutionRole >/dev/null 2>&1 && \
+             aws iam get-role --role-name ecsTaskRole >/dev/null 2>&1; then
+            echo "✅ IAM roles already exist"
+            echo "ROLES_EXIST=true" >> $GITHUB_ENV
+          else
+            echo "❌ IAM roles not found. Please create them manually:"
+            echo "1. ecsTaskExecutionRole with AmazonECSTaskExecutionRolePolicy"
+            echo "2. ecsTaskRole (can be empty)"
+            echo "ROLES_EXIST=false" >> $GITHUB_ENV
+            exit 1
+          fi
           # Trust policy cho ECS tasks
           cat > trust-policy.json << EOF
           {
@@ -259,12 +272,31 @@ jobs:
             aws iam create-role \
               --role-name ecsTaskRole \
               --assume-role-policy-document file://trust-policy.json
+
+            # Attach basic ECS task permissions
+            aws iam attach-role-policy \
+              --role-name ecsTaskRole \
+              --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
           else
             echo "ecsTaskRole already exists"
+            # Ensure trust policy is correct
+            aws iam update-assume-role-policy \
+              --role-name ecsTaskRole \
+              --policy-document file://trust-policy.json
           fi
 
           # Cleanup
           rm -f trust-policy.json
+
+      - name: Verify IAM roles
+        run: |
+          echo "Verifying IAM roles..."
+          aws iam get-role --role-name ecsTaskExecutionRole --query 'Role.AssumeRolePolicyDocument'
+          aws iam get-role --role-name ecsTaskRole --query 'Role.AssumeRolePolicyDocument'
+
+          echo "Checking role policies..."
+          aws iam list-attached-role-policies --role-name ecsTaskExecutionRole
+          aws iam list-attached-role-policies --role-name ecsTaskRole
 
       - name: Update task definition
         run: |

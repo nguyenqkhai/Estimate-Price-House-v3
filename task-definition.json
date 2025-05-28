@@ -16,17 +16,12 @@
           "containerPort": 8501,
           "protocol": "tcp",
           "name": "streamlit"
-        },
-        {
-          "containerPort": 5000,
-          "protocol": "tcp",
-          "name": "api"
         }
       ],
       "healthCheck": {
         "command": [
           "CMD-SHELL",
-          "curl -f http://localhost:5000/health || exit 1"
+          "curl -f http://localhost:8501/_stcore/health || exit 1"
         ],
         "interval": 30,
         "timeout": 5,
@@ -46,6 +41,14 @@
         {
           "name": "APP_VERSION",
           "value": "VERSION_PLACEHOLDER"
+        },
+        {
+          "name": "STREAMLIT_SERVER_PORT",
+          "value": "8501"
+        },
+        {
+          "name": "STREAMLIT_SERVER_ADDRESS",
+          "value": "0.0.0.0"
         }
       ]
     }

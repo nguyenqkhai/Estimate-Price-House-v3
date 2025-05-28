@@ -330,21 +330,52 @@ jobs:
         run: |
           REGION="${{ secrets.AWS_REGION || 'us-east-1' }}"
 
-          # Kiểm tra service có tồn tại không
-          if aws ecs describe-services --cluster ${{ env.CLUSTER_NAME }} --services ${{ env.SERVICE_NAME }} --region $REGION --query 'services[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
-            echo "Updating existing ECS service: ${{ env.SERVICE_NAME }}"
+          # Kiểm tra service status chi tiết
+          SERVICE_STATUS=$(aws ecs describe-services --cluster ${{ env.CLUSTER_NAME }} --services ${{ env.SERVICE_NAME }} --region $REGION --query 'services[0].status' --output text 2>/dev/null || echo "NOT_FOUND")
+          echo "🔍 Current service status: $SERVICE_STATUS"
+
+          if [ "$SERVICE_STATUS" = "ACTIVE" ]; then
+            echo "✅ Updating existing ACTIVE ECS service: ${{ env.SERVICE_NAME }}"
             aws ecs update-service \
               --cluster ${{ env.CLUSTER_NAME }} \
               --service ${{ env.SERVICE_NAME }} \
               --task-definition ${{ env.TASK_DEF_ARN }} \
               --region $REGION
-          else
-            echo "Creating new ECS service: ${{ env.SERVICE_NAME }}"
+          elif [ "$SERVICE_STATUS" = "DRAINING" ] || [ "$SERVICE_STATUS" = "PENDING" ]; then
+            echo "⏳ Service is in $SERVICE_STATUS state. Waiting for stability..."
+            aws ecs wait services-stable \
+              --cluster ${{ env.CLUSTER_NAME }} \
+              --services ${{ env.SERVICE_NAME }} \
+              --region $REGION
+            echo "✅ Service is now stable. Updating..."
+            aws ecs update-service \
+              --cluster ${{ env.CLUSTER_NAME }} \
+              --service ${{ env.SERVICE_NAME }} \
+              --task-definition ${{ env.TASK_DEF_ARN }} \
+              --region $REGION
+          elif [ "$SERVICE_STATUS" = "INACTIVE" ]; then
+            echo "🗑️ Service is INACTIVE. Deleting and recreating..."
+            aws ecs delete-service \
+              --cluster ${{ env.CLUSTER_NAME }} \
+              --service ${{ env.SERVICE_NAME }} \
+              --region $REGION || true
+            echo "⏳ Waiting before recreating..."
+            sleep 15
             # Lấy default VPC và subnets
             VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text --region $REGION)
             SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[0:2].SubnetId' --output text --region $REGION | tr '\t' ',')
             SECURITY_GROUP_ID=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" "Name=group-name,Values=default" --query 'SecurityGroups[0].GroupId' --output text --region $REGION)
+          else
+            echo "🆕 Creating new ECS service: ${{ env.SERVICE_NAME }} (Status: $SERVICE_STATUS)"
+            # Lấy default VPC và subnets
+            VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text --region $REGION)
+            SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[0:2].SubnetId' --output text --region $REGION | tr '\t' ',')
+            SECURITY_GROUP_ID=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" "Name=group-name,Values=default" --query 'SecurityGroups[0].GroupId' --output text --region $REGION)
+          fi
 
+          # Tạo service (cho cả INACTIVE và NOT_FOUND cases)
+          if [ "$SERVICE_STATUS" = "INACTIVE" ] || [ "$SERVICE_STATUS" = "NOT_FOUND" ]; then
+            echo "🚀 Creating ECS service..."
             aws ecs create-service \
               --cluster ${{ env.CLUSTER_NAME }} \
               --service-name ${{ env.SERVICE_NAME }} \

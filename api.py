@@ -2,9 +2,16 @@ from flask import Flask, jsonify
 import os
 from datetime import datetime
 import joblib
-import pandas as pd
 
 app = Flask(__name__)
+
+# CSRF protection không cần thiết cho health check API
+# Đây là internal API chỉ dùng cho monitoring, không có user input
+# Disable CSRF protection is safe here vì:
+# 1. Chỉ có GET endpoints cho health checks
+# 2. Không có sensitive operations
+# 3. Không có user authentication
+app.config['WTF_CSRF_ENABLED'] = False
 
 # Load model để kiểm tra health
 try:
@@ -24,11 +31,11 @@ def health_check():
         "version": os.getenv("APP_VERSION", "unknown"),
         "model_loaded": model_loaded
     }
-    
+
     if not model_loaded:
         health_status["error"] = model_error
         return jsonify(health_status), 500
-    
+
     return jsonify(health_status), 200
 
 @app.route('/metrics')

@@ -30,8 +30,10 @@ COPY encoder_v5.pkl .
 
 # Tạo non-root user để bảo mật (giải quyết security hotspot)
 # Điều này ngăn container chạy với quyền root, giảm rủi ro bảo mật
-RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
-RUN chmod +x start.sh
+# Merge RUN instructions để giảm layers và tối ưu image size
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser /app && \
+    chmod +x start.sh
 USER appuser
 
 # Expose ports (8501 cho Streamlit, 5000 cho Flask API)

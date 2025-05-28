@@ -5,6 +5,16 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_to_ec2:
+        description: "Deploy to EC2 (in addition to ECS)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 env:
   DOCKER_IMAGE: house-price-estimator
@@ -371,6 +381,14 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Get ECR repository URI
+        run: |
+          REPO_NAME="house-price-estimator"
+          REGION="${{ secrets.AWS_REGION || 'us-east-1' }}"
+          ECR_URI=$(aws ecr describe-repositories --repository-names $REPO_NAME --region $REGION --query 'repositories[0].repositoryUri' --output text)
+          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+          echo "ECR Repository URI: $ECR_URI"
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -384,14 +402,14 @@ jobs:
             aws configure set default.region ${{ secrets.AWS_REGION }}
 
             # Login to ECR
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY_URI }}
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ env.ECR_URI }}
 
             # Dừng và xóa container hiện tại
             sudo docker stop house-price-estimator || true
             sudo docker rm house-price-estimator || true
 
             # Pull image mới nhất từ ECR
-            sudo docker pull ${{ secrets.ECR_REPOSITORY_URI }}:latest
+            sudo docker pull ${{ env.ECR_URI }}:latest
 
             # Chạy container mới
             sudo docker run -d \
@@ -401,7 +419,7 @@ jobs:
               -p 8501:8501 \
               -p 5000:5000 \
               -e APP_VERSION=${{ env.VERSION }} \
-              ${{ secrets.ECR_REPOSITORY_URI }}:latest
+              ${{ env.ECR_URI }}:latest
 
             # Dọn dẹp old images
             sudo docker image prune -f

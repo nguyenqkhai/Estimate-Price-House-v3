@@ -12,6 +12,18 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
+# Security configuration for production
+app.config.update(
+    SECRET_KEY=os.getenv('SECRET_KEY', 'dev-key-change-in-production'),
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=300,  # 5 minutes
+    WTF_CSRF_TIME_LIMIT=None,
+    JSON_SORT_KEYS=False,
+    JSONIFY_PRETTYPRINT_REGULAR=False
+)
+
 # CSRF protection analysis:
 # This is a monitoring/health check API with only GET endpoints
 # CSRF protection is not needed because:

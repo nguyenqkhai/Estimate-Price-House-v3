@@ -2,6 +2,8 @@
 
 Bài tập cuối kỳ môn AI - Dự đoán giá nhà tại khu vực Tp.HCM với CI/CD Pipeline
 
+🚀 **Latest Update**: Added ECS + EC2 dual deployment support with manual trigger
+
 ## 📋 Mô tả dự án
 
 Ứng dụng dự đoán giá nhà sử dụng Machine Learning với giao diện Streamlit, được triển khai tự động thông qua GitHub Actions.

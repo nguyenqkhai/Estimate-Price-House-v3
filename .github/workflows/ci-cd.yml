@@ -220,7 +220,8 @@ jobs:
           echo "CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
           echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
 
-      - name: Create IAM roles for ECS
+      - name: Create IAM roles for ECS (Skip if roles exist)
+        continue-on-error: true
         run: |
           # Trust policy cho ECS tasks
           cat > trust-policy.json << EOF

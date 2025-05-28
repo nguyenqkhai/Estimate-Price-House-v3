@@ -53,6 +53,8 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ## 🔧 CI/CD Pipeline
 
+🚀 **ECS Deployment Ready** - IAM permissions configured
+
 Pipeline tự động bao gồm:
 
 1. **Test** - Unit tests với pytest và coverage

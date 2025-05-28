@@ -127,6 +127,24 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Create ECR repository if not exists
+        run: |
+          REPO_NAME="house-price-estimator"
+          REGION="${{ secrets.AWS_REGION || 'us-east-1' }}"
+
+          # Kiểm tra repository có tồn tại không
+          if ! aws ecr describe-repositories --repository-names $REPO_NAME --region $REGION 2>/dev/null; then
+            echo "Creating ECR repository: $REPO_NAME"
+            aws ecr create-repository --repository-name $REPO_NAME --region $REGION
+          else
+            echo "ECR repository $REPO_NAME already exists"
+          fi
+
+          # Lấy repository URI và lưu vào environment
+          ECR_URI=$(aws ecr describe-repositories --repository-names $REPO_NAME --region $REGION --query 'repositories[0].repositoryUri' --output text)
+          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+          echo "Repository URI: $ECR_URI"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -136,8 +154,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.ECR_REPOSITORY_URI }}:latest
-            ${{ secrets.ECR_REPOSITORY_URI }}:${{ env.VERSION }}
+            ${{ env.ECR_URI }}:latest
+            ${{ env.ECR_URI }}:${{ env.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -154,7 +172,7 @@ jobs:
     name: Deploy to ECS
     runs-on: ubuntu-latest
     needs: [build-and-push-ecr]
-    if: github.ref == 'refs/heads/main' && false # Tạm thời disable cho đến khi setup ECS
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
@@ -167,20 +185,140 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
+      - name: Setup ECS resources
+        run: |
+          REGION="${{ secrets.AWS_REGION || 'us-east-1' }}"
+          CLUSTER_NAME="house-price-cluster"
+          SERVICE_NAME="house-price-service"
+          REPO_NAME="house-price-estimator"
+
+          # Lấy Account ID
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
+
+          # Lấy ECR URI
+          ECR_URI=$(aws ecr describe-repositories --repository-names $REPO_NAME --region $REGION --query 'repositories[0].repositoryUri' --output text)
+          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+
+          # Tạo CloudWatch Log Group
+          LOG_GROUP="/ecs/house-price"
+          if ! aws logs describe-log-groups --log-group-name-prefix $LOG_GROUP --region $REGION --query 'logGroups[0].logGroupName' --output text 2>/dev/null | grep -q "$LOG_GROUP"; then
+            echo "Creating CloudWatch Log Group: $LOG_GROUP"
+            aws logs create-log-group --log-group-name $LOG_GROUP --region $REGION
+          else
+            echo "Log Group $LOG_GROUP already exists"
+          fi
+
+          # Tạo ECS Cluster
+          if ! aws ecs describe-clusters --clusters $CLUSTER_NAME --region $REGION --query 'clusters[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            echo "Creating ECS Cluster: $CLUSTER_NAME"
+            aws ecs create-cluster --cluster-name $CLUSTER_NAME --region $REGION
+          else
+            echo "ECS Cluster $CLUSTER_NAME already exists"
+          fi
+
+          echo "CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
+          echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
+
+      - name: Create IAM roles for ECS
+        run: |
+          # Trust policy cho ECS tasks
+          cat > trust-policy.json << EOF
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ecs-tasks.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+          EOF
+
+          # Tạo ECS Task Execution Role
+          if ! aws iam get-role --role-name ecsTaskExecutionRole 2>/dev/null; then
+            echo "Creating ecsTaskExecutionRole..."
+            aws iam create-role \
+              --role-name ecsTaskExecutionRole \
+              --assume-role-policy-document file://trust-policy.json
+
+            aws iam attach-role-policy \
+              --role-name ecsTaskExecutionRole \
+              --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+          else
+            echo "ecsTaskExecutionRole already exists"
+          fi
+
+          # Tạo ECS Task Role
+          if ! aws iam get-role --role-name ecsTaskRole 2>/dev/null; then
+            echo "Creating ecsTaskRole..."
+            aws iam create-role \
+              --role-name ecsTaskRole \
+              --assume-role-policy-document file://trust-policy.json
+          else
+            echo "ecsTaskRole already exists"
+          fi
+
+          # Cleanup
+          rm -f trust-policy.json
+
       - name: Update task definition
         run: |
           # Thay thế placeholders trong task definition
-          sed -i "s|ECR_REPOSITORY_URI|${{ secrets.ECR_REPOSITORY_URI }}|g" task-definition.json
-          sed -i "s|ACCOUNT_ID|${{ secrets.AWS_ACCOUNT_ID }}|g" task-definition.json
+          sed -i "s|ECR_REPOSITORY_URI|${{ env.ECR_URI }}|g" task-definition.json
+          sed -i "s|ACCOUNT_ID|${{ env.ACCOUNT_ID }}|g" task-definition.json
           sed -i "s|VERSION_PLACEHOLDER|${{ env.VERSION }}|g" task-definition.json
 
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          service: ${{ secrets.ECS_SERVICE_NAME }}
-          cluster: ${{ secrets.ECS_CLUSTER_NAME }}
-          wait-for-service-stability: true
+          # Hiển thị task definition để debug
+          echo "Updated task definition:"
+          cat task-definition.json
+
+      - name: Register task definition
+        run: |
+          # Register task definition và lấy ARN
+          TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://task-definition.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "TASK_DEF_ARN=$TASK_DEF_ARN" >> $GITHUB_ENV
+          echo "Registered task definition: $TASK_DEF_ARN"
+
+      - name: Create or update ECS service
+        run: |
+          REGION="${{ secrets.AWS_REGION || 'us-east-1' }}"
+
+          # Kiểm tra service có tồn tại không
+          if aws ecs describe-services --cluster ${{ env.CLUSTER_NAME }} --services ${{ env.SERVICE_NAME }} --region $REGION --query 'services[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            echo "Updating existing ECS service: ${{ env.SERVICE_NAME }}"
+            aws ecs update-service \
+              --cluster ${{ env.CLUSTER_NAME }} \
+              --service ${{ env.SERVICE_NAME }} \
+              --task-definition ${{ env.TASK_DEF_ARN }} \
+              --region $REGION
+          else
+            echo "Creating new ECS service: ${{ env.SERVICE_NAME }}"
+            # Lấy default VPC và subnets
+            VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text --region $REGION)
+            SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[0:2].SubnetId' --output text --region $REGION | tr '\t' ',')
+            SECURITY_GROUP_ID=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" "Name=group-name,Values=default" --query 'SecurityGroups[0].GroupId' --output text --region $REGION)
+
+            aws ecs create-service \
+              --cluster ${{ env.CLUSTER_NAME }} \
+              --service-name ${{ env.SERVICE_NAME }} \
+              --task-definition ${{ env.TASK_DEF_ARN }} \
+              --desired-count 1 \
+              --launch-type FARGATE \
+              --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_IDS],securityGroups=[$SECURITY_GROUP_ID],assignPublicIp=ENABLED}" \
+              --region $REGION
+          fi
+
+      - name: Wait for service stability
+        run: |
+          echo "Waiting for service to become stable..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.CLUSTER_NAME }} \
+            --services ${{ env.SERVICE_NAME }} \
+            --region ${{ secrets.AWS_REGION || 'us-east-1' }}
 
   # Giữ lại EC2 deployment như backup option
   deploy-ec2-backup:

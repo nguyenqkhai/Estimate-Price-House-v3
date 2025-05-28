@@ -9,6 +9,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import preprocess_input, district_to_wards
+from api import app as flask_app
 
 class TestApp:
     @classmethod
@@ -115,6 +116,46 @@ class TestApp:
         # Kiểm tra các cột số có chứa dữ liệu số
         for col in numeric_columns:
             assert pd.api.types.is_numeric_dtype(test_data[col])
+
+
+class TestAPI:
+    """Test class cho Flask API endpoints."""
+
+    @classmethod
+    def setup_class(cls):
+        """Thiết lập Flask test client."""
+        cls.client = flask_app.test_client()
+        flask_app.config['TESTING'] = True
+
+    def test_health_endpoint(self):
+        """Test health check endpoint."""
+        response = self.client.get('/health')
+        assert response.status_code in [200, 500]  # 200 nếu model load được, 500 nếu không
+
+        data = response.get_json()
+        assert 'status' in data
+        assert 'timestamp' in data
+        assert 'version' in data
+        assert 'model_loaded' in data
+
+    def test_metrics_endpoint(self):
+        """Test metrics endpoint."""
+        response = self.client.get('/metrics')
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert 'app_info' in data
+        assert 'model_info' in data
+        assert 'system_info' in data
+
+    def test_ready_endpoint(self):
+        """Test readiness endpoint."""
+        response = self.client.get('/ready')
+        assert response.status_code in [200, 503]  # 200 nếu ready, 503 nếu không
+
+        data = response.get_json()
+        assert 'status' in data
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

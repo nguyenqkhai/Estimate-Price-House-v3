@@ -8,7 +8,8 @@ on:
 
 env:
   DOCKER_IMAGE: house-price-estimator
-  DOCKER_TAG: ${{ github.sha }}
+  VERSION: ${{ github.run_number }}.${{ github.sha }}
+  DOCKER_TAG: ${{ github.run_number }}.${{ github.sha }}
 
 jobs:
   test:
@@ -48,6 +49,16 @@ jobs:
           flags: unittests
           name: codecov-umbrella
 
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.run_number }}
+          path: |
+            coverage.xml
+            htmlcov/
+          retention-days: 30
+
   sonarcloud:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
@@ -85,8 +96,18 @@ jobs:
             -Dsonar.projectKey=nguyenqkhai_Estimate-Price-House-v3
             -Dsonar.organization=nguyenqkhai
 
-  build-and-push:
-    name: Build and Push Docker Image
+      - name: Upload SonarCloud artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sonar-results-${{ github.run_number }}
+          path: |
+            .scannerwork/
+            coverage.xml
+          retention-days: 30
+
+  build-and-push-ecr:
+    name: Build and Push to ECR
     runs-on: ubuntu-latest
     needs: [test] # Remove sonarcloud dependency to not block on quality gate
     if: github.ref == 'refs/heads/main'
@@ -95,33 +116,90 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker image
+      - name: Build and push to ECR
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true # Re-enable push with proper token permissions
+          push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+            ${{ secrets.ECR_REPOSITORY_URI }}:latest
+            ${{ secrets.ECR_REPOSITORY_URI }}:${{ env.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to EC2
+      - name: Upload Docker build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-build-${{ github.run_number }}
+          path: |
+            Dockerfile
+            task-definition.json
+          retention-days: 30
+
+  deploy-ecs:
+    name: Deploy to ECS
     runs-on: ubuntu-latest
-    needs: [build-and-push]
+    needs: [build-and-push-ecr]
     if: github.ref == 'refs/heads/main'
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update task definition
+        run: |
+          # Thay thế placeholders trong task definition
+          sed -i "s|ECR_REPOSITORY_URI|${{ secrets.ECR_REPOSITORY_URI }}|g" task-definition.json
+          sed -i "s|ACCOUNT_ID|${{ secrets.AWS_ACCOUNT_ID }}|g" task-definition.json
+          sed -i "s|VERSION_PLACEHOLDER|${{ env.VERSION }}|g" task-definition.json
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          service: ${{ secrets.ECS_SERVICE_NAME }}
+          cluster: ${{ secrets.ECS_CLUSTER_NAME }}
+          wait-for-service-stability: true
+
+  # Giữ lại EC2 deployment như backup option
+  deploy-ec2-backup:
+    name: Deploy to EC2 (Backup)
+    runs-on: ubuntu-latest
+    needs: [build-and-push-ecr]
+    if: github.ref == 'refs/heads/main' && github.event.inputs.deploy_to_ec2 == 'true'
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -129,12 +207,20 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script: |
+            # Configure AWS CLI trên EC2
+            aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws configure set default.region ${{ secrets.AWS_REGION }}
+
+            # Login to ECR
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY_URI }}
+
             # Dừng và xóa container hiện tại
             sudo docker stop house-price-estimator || true
             sudo docker rm house-price-estimator || true
 
-            # Pull image mới nhất
-            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/house-price-estimator:latest
+            # Pull image mới nhất từ ECR
+            sudo docker pull ${{ secrets.ECR_REPOSITORY_URI }}:latest
 
             # Chạy container mới
             sudo docker run -d \
@@ -142,7 +228,9 @@ jobs:
               --restart unless-stopped \
               -p 80:8501 \
               -p 8501:8501 \
-              ${{ secrets.DOCKERHUB_USERNAME }}/house-price-estimator:latest
+              -p 5000:5000 \
+              -e APP_VERSION=${{ env.VERSION }} \
+              ${{ secrets.ECR_REPOSITORY_URI }}:latest
 
             # Dọn dẹp old images
             sudo docker image prune -f

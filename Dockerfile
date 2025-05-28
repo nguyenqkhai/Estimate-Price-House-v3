@@ -23,19 +23,22 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code (chỉ copy files cần thiết để tránh sensitive data)
 COPY app.py .
+COPY api.py .
+COPY start.sh .
 COPY model_estimate_price_house_v5.pkl .
 COPY encoder_v5.pkl .
 
 # Tạo non-root user để bảo mật (giải quyết security hotspot)
 # Điều này ngăn container chạy với quyền root, giảm rủi ro bảo mật
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
+RUN chmod +x start.sh
 USER appuser
 
-# Expose port
-EXPOSE 8501
+# Expose ports (8501 cho Streamlit, 5000 cho Flask API)
+EXPOSE 8501 5000
 
-# Health check
-HEALTHCHECK CMD ["curl", "--fail", "http://localhost:8501/_stcore/health"]
+# Health check sử dụng Flask API endpoint
+HEALTHCHECK CMD ["curl", "--fail", "http://localhost:5000/health"]
 
-# Chạy ứng dụng
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Chạy cả hai ứng dụng
+CMD ["./start.sh"]

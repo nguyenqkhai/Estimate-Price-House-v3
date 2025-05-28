@@ -1,0 +1,53 @@
+{
+  "family": "house-price-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "house-price-container",
+      "image": "ECR_REPOSITORY_URI:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8501,
+          "protocol": "tcp",
+          "name": "streamlit"
+        },
+        {
+          "containerPort": 5000,
+          "protocol": "tcp",
+          "name": "api"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:5000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/house-price",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      },
+      "environment": [
+        {
+          "name": "APP_VERSION",
+          "value": "VERSION_PLACEHOLDER"
+        }
+      ]
+    }
+  ]
+}

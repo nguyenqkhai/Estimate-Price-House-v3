@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "house-price-container",
-      "image": "ECR_REPOSITORY_URI:latest",
+      "image": "ECR_REPOSITORY_URI:VERSION_PLACEHOLDER",
       "essential": true,
       "portMappings": [
         {

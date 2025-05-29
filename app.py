@@ -267,5 +267,5 @@ if submit_button:
 
 st.markdown("""
     ---
-    <small>Ứng dụng dự đoán giá nhà được phát triển bởi nhóm DYNASQUAD NGÀY 29/05/2025 7h.</small>
+    <small>Ứng dụng dự đoán giá nhà được phát triển bởi nhóm DYNASQUAD NGÀY 29/05/2025 8h.</small>
     """, unsafe_allow_html=True)
